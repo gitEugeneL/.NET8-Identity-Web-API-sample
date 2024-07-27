@@ -22,6 +22,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 /*** Configure Identity ***/
 builder.Services.AddIdentity<CustomIdentityUser, IdentityRole>(options =>
     {
+        options.User.RequireUniqueEmail = true;
         options.Password.RequireDigit = true;
         options.Password.RequireUppercase = true;
         options.Password.RequireLowercase = true;

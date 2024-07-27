@@ -2,43 +2,31 @@ using Carter;
 using Carter.ModelBinding;
 using FluentValidation;
 using MediatR;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
-using Server.Contracts.Auth;
 using Server.Domain.Entities;
+using Server.ErrorResults;
+using Server.ErrorResults.Errors;
 
 namespace Server.Features.Auth;
 
 public class Registration : ICarterModule
 {
-    public void AddRoutes(IEndpointRouteBuilder app)
-    {
-        app.MapPost("/api/auth/registration", async (RegistrationRequest request, ISender sender) =>
-            {
-                var command = new Command(
-                    Email: request.Email,
-                    Password: request.Password,
-                    ConfirmPassword: request.ConfirmPassword,
-                    FirstName: request.FirstName,
-                    LastName: request.LastName,
-                    Age: request.Age
-                );
-                return await sender.Send(command);
-            })
-            .WithTags("Authentication")
-            .Produces<RegistrationResponse>(StatusCodes.Status201Created)
-            .Produces<RegistrationResponse>(StatusCodes.Status400BadRequest);
-    }
-    public sealed record Command(
+    public sealed record Request(
         string Email,
         string Password,
         string ConfirmPassword,
+        string Username,
         string? FirstName,
         string? LastName,
-        int? Age    
-    ): IRequest<Results<Created<RegistrationResponse>, BadRequest<RegistrationResponse>, ValidationProblem>>;
+        int? Age
+    ): IRequest<CustomResult<Response>>;
+
+    public sealed record Response(
+        bool IsSuccess,
+        IEnumerable<string> RegistrationErrors
+    );
     
-    public sealed class Validator : AbstractValidator<Command>
+    public sealed class Validator : AbstractValidator<Request>
     {
         public Validator()
         {
@@ -58,6 +46,11 @@ public class Registration : ICarterModule
                 .Equal(c => c.Password)
                 .WithMessage("Passwords do not match");
 
+            RuleFor(c => c.Username)
+                .NotEmpty()
+                .Matches( "^[a-zA-Z0-9-_]*$")
+                .WithMessage("Username must not contain special characters.");
+            
             RuleFor(c => c.FirstName)
                 .MinimumLength(3)
                 .MaximumLength(20);
@@ -72,34 +65,55 @@ public class Registration : ICarterModule
         }
     }
     
-    internal sealed class Handler(
-        IValidator<Command> validator,
-        UserManager<CustomIdentityUser> userManager) 
-        : IRequestHandler<Command, Results<Created<RegistrationResponse>, BadRequest<RegistrationResponse>, ValidationProblem>>
+    public void AddRoutes(IEndpointRouteBuilder app)
     {
-        public async Task<Results<Created<RegistrationResponse>, BadRequest<RegistrationResponse>, ValidationProblem>> Handle(
-            Command command, 
-            CancellationToken cancellationToken)
+        app.MapPost("/api/auth/registration", async (Request request, ISender sender) =>
+            {
+                var result = await sender.Send(request);
+                
+                return result.Error switch
+                {
+                    ValidationError => Results.UnprocessableEntity(result.Error.ResultObject),
+                    AuthenticationError => Results.BadRequest(result.Error.ResultObject),
+                    _ => Results.Ok(result.Value)
+                };
+            })
+            .WithTags("Authentication")
+            .Produces(StatusCodes.Status422UnprocessableEntity)
+            .Produces<Response>()
+            .Produces<Response>(StatusCodes.Status400BadRequest);
+    }
+    
+    internal sealed class Handler(
+        IValidator<Request> validator,
+        UserManager<CustomIdentityUser> userManager
+    ) : IRequestHandler<Request, CustomResult<Response>>
+    {
+        public async Task<CustomResult<Response>> Handle(Request requesst, CancellationToken cancellationToken)
         {
-            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            var validationResult = await validator.ValidateAsync(requesst, cancellationToken);
             if (!validationResult.IsValid)
-                return TypedResults.ValidationProblem(validationResult.GetValidationProblems());
+                return CustomResult<Response>
+                    .Failure(new ValidationError(validationResult.GetValidationProblems()));
             
             var user = new CustomIdentityUser
             {
-                UserName = command.Email,
-                Email = command.Email,
-                FirstName = command.FirstName,
-                LastName = command.LastName,
-                Age = command.Age
+                UserName = requesst.Username,
+                Email = requesst.Email,
+                FirstName = requesst.FirstName,
+                LastName = requesst.LastName,
+                Age = requesst.Age
             };
 
-            var createResult = await userManager.CreateAsync(user, command.Password);
-            if (createResult.Succeeded) 
-                return TypedResults.Created(user.Id, new RegistrationResponse(true, []));
+            var createResult = await userManager.CreateAsync(user, requesst.Password);
+            
+            if (createResult.Succeeded)
+                return CustomResult<Response>.Success(new Response(true, []));
             
             var errors = createResult.Errors.Select(e => e.Description);
-            return TypedResults.BadRequest(new RegistrationResponse(false, errors));
+
+            return CustomResult<Response>
+                .Failure(new AuthenticationError(new Response(false, errors)));
         }
     }
 }
