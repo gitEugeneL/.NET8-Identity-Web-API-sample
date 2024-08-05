@@ -23,14 +23,16 @@ public class SecurityService(IConfiguration configuration) : ISecurityService
         var accessTokenKey = configuration.GetSection("Authentication:AccessTokenSecurityKey").Value!;
 
         var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(accessTokenKey));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
 
         var descriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
             Expires = DateTime.UtcNow.AddMinutes(
                 int.Parse(configuration.GetSection("Authentication:AccessTokenExpireMin").Value!)),
-            SigningCredentials = credentials
+            SigningCredentials = credentials,
+            Issuer = configuration.GetSection("Authentication:Issuer").Value,
+            Audience = configuration.GetSection("Authentication:Audience").Value
         };
         var handler = new JwtSecurityTokenHandler();
         var token = handler.CreateToken(descriptor);

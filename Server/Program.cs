@@ -6,11 +6,13 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Server.Data;
 using Server.Domain.Entities;
 using Server.Helpers;
 using Server.Security;
 using Server.Security.Interfaces;
+using Swashbuckle.AspNetCore.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -85,6 +87,19 @@ builder.Services.AddAuthorizationBuilder()
             .RequireClaim(ClaimTypes.Role)
             .RequireRole(AppConstants.AdminRole)
     );
+
+/*** Swagger configuration ***/
+builder.Services.AddSwaggerGen(c =>
+{
+    c.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+    {
+        Description = "JWT Bearer Authorization with refresh token. Example: Bearer {accessToken}",
+        In = ParameterLocation.Header,
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey
+    });
+    c.OperationFilter<SecurityRequirementsOperationFilter>();
+});
 
 var app = builder.Build();
 
