@@ -9,14 +9,16 @@ namespace Server.Security;
 
 public class SecurityService(IConfiguration configuration) : ISecurityService
 {
-    public string GenerateAccessToken(User user)
+    public string GenerateAccessToken(User user, IList<string> roles)
     {
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.NameIdentifier, user.Id),
             new(ClaimTypes.Name, user.UserName!),
-            new(ClaimTypes.Email, user.Email!)
+            new(ClaimTypes.Email, user.Email!),
         };
+        claims.AddRange(roles
+                .Select(role => new Claim(ClaimTypes.Role, role)));
 
         var accessTokenKey = configuration.GetSection("Authentication:AccessTokenSecurityKey").Value!;
 

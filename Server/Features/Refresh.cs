@@ -2,9 +2,11 @@ using Carter;
 using Carter.ModelBinding;
 using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Server.Contracts;
 using Server.Data;
+using Server.Domain.Entities;
 using Server.Security.Interfaces;
 
 namespace Server.Features;
@@ -39,7 +41,8 @@ public class Refresh : ICarterModule
     internal sealed class Handler(
         IValidator<Command> validator,
         ISecurityService securityService,
-        AppDbContext dbContext
+        AppDbContext dbContext,
+        UserManager<User> userManager
     ) : IRequestHandler<Command, IResult>
     {
         public async Task<IResult> Handle(Command command, CancellationToken cancellationToken)
@@ -65,7 +68,9 @@ public class Refresh : ICarterModule
             if (oldRefreshToken.Expires < DateTime.UtcNow)
                 return TypedResults.Unauthorized();
             
-            var accessToken = securityService.GenerateAccessToken(user);
+            var userRoles = await userManager.GetRolesAsync(user);
+            
+            var accessToken = securityService.GenerateAccessToken(user, userRoles);
             var refreshToken = securityService.GenerateRefreshToken(user);
             
             user.RefreshTokens.Remove(oldRefreshToken);

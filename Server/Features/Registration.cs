@@ -5,6 +5,7 @@ using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Server.Contracts;
 using Server.Domain.Entities;
+using Server.Helpers;
 
 namespace Server.Features;
 
@@ -103,7 +104,9 @@ public class Registration : ICarterModule
             };
         
             var createResult = await userManager.CreateAsync(user, commnad.Password);
-
+            
+            await userManager.AddToRoleAsync(user, AppConstants.UserRole);
+            
             return createResult.Succeeded 
                 ? Results.Created() 
                 : Results.BadRequest(createResult.Errors.Select(e => e.Description));

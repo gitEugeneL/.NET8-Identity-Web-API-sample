@@ -1,13 +1,14 @@
 using System.Reflection;
+using System.Security.Claims;
 using System.Text;
 using Carter;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Server.Data;
 using Server.Domain.Entities;
+using Server.Helpers;
 using Server.Security;
 using Server.Security.Interfaces;
 
@@ -34,7 +35,7 @@ builder.Services.AddMediatR(config =>
 builder.Services.AddCarter();
 
 /*** Configure Identity ***/
-builder.Services.AddIdentity<User, IdentityRole>(options =>
+builder.Services.AddIdentity<User, Role>(options =>
     {
         options.User.RequireUniqueEmail = true;
         options.Password.RequireDigit = true;
@@ -42,6 +43,8 @@ builder.Services.AddIdentity<User, IdentityRole>(options =>
         options.Password.RequireLowercase = true;
         options.Password.RequireNonAlphanumeric = true;
         options.Password.RequiredLength = 8;
+        
+        
     })
     .AddEntityFrameworkStores<AppDbContext>();
 
@@ -66,6 +69,22 @@ builder.Services.AddAuthentication(options =>
                 .GetBytes(configuration.GetSection("AccessTokenSecurityKey").Value!))
         };
     });
+
+/*** Authentication roles policies ***/
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(AppConstants.UserRole, policy =>
+        policy
+            .RequireClaim(ClaimTypes.Email)
+            .RequireClaim(ClaimTypes.NameIdentifier)
+            .RequireClaim(ClaimTypes.Role)
+            .RequireRole(AppConstants.UserRole))
+    .AddPolicy(AppConstants.AdminRole, policy =>
+        policy
+            .RequireClaim(ClaimTypes.Email)
+            .RequireClaim(ClaimTypes.NameIdentifier)
+            .RequireClaim(ClaimTypes.Role)
+            .RequireRole(AppConstants.AdminRole)
+    );
 
 var app = builder.Build();
 

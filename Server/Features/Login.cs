@@ -66,8 +66,10 @@ public class Login : ICarterModule
             if (user is null || !await userManager.CheckPasswordAsync(user, command.Password))
                 return Results.BadRequest("login or password is incorrect");
             
+            var userRoles = await userManager.GetRolesAsync(user);
+            
             securityService.UpdateRefreshTokenCount(user);
-            var accessToken = securityService.GenerateAccessToken(user);
+            var accessToken = securityService.GenerateAccessToken(user, userRoles);
             var refreshToken = securityService.GenerateRefreshToken(user);
             
             user.RefreshTokens.Add(refreshToken);
