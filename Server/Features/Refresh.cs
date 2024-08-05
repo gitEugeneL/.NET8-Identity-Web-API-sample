@@ -2,51 +2,42 @@ using Carter;
 using Carter.ModelBinding;
 using FluentValidation;
 using MediatR;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Server.Contracts;
 using Server.Data;
-using Server.Domain.Entities;
 using Server.Security.Interfaces;
 
 namespace Server.Features;
 
-public class Login : ICarterModule
+public class Refresh : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/auth/login", async (LoginRequest request, ISender sender) =>
+        app.MapPost("/pi/auth/refresh", async (RefreshRequest request, ISender sender) =>
             {
-                var command = new Command(request.Email, request.Password);
+                var command = new Command(request.RefreshToken);
                 return await sender.Send(command);
             })
             .WithTags("Authentication")
             .Produces<LoginResponse>()
-            .Produces(StatusCodes.Status400BadRequest)
-            .Produces(StatusCodes.Status422UnprocessableEntity);
+            .Produces(StatusCodes.Status401Unauthorized);
     }
-    
+
     public sealed record Command(
-        string Email,
-        string Password
+        string RefreshToken
     ) : IRequest<IResult>;
     
     public class Validator : AbstractValidator<Command>
     {
         public Validator()
         {
-            RuleFor(request => request.Email)
-                .NotEmpty()
-                .EmailAddress();
-
-            RuleFor(request => request.Password)
+            RuleFor(request => request.RefreshToken)
                 .NotEmpty();
         }
     }
-    
+
     internal sealed class Handler(
         IValidator<Command> validator,
-        UserManager<User> userManager,
         ISecurityService securityService,
         AppDbContext dbContext
     ) : IRequestHandler<Command, IResult>
@@ -60,17 +51,26 @@ public class Login : ICarterModule
             var user = await dbContext
                 .Users
                 .Include(u => u.RefreshTokens)
-                .Where(u => u.NormalizedEmail == command.Email.Trim().ToUpper())
-                .SingleOrDefaultAsync(cancellationToken);
+                .Where(u => u.RefreshTokens
+                    .Any(rt => rt.Token == command.RefreshToken))
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (user is null || user.RefreshTokens.Count == 0)
+                return Results.Unauthorized();
             
-            if (user is null || !await userManager.CheckPasswordAsync(user, command.Password))
-                return Results.BadRequest("login or password is incorrect");
+            var oldRefreshToken = user
+                .RefreshTokens
+                .First(rt => rt.Token == command.RefreshToken);
             
-            securityService.UpdateRefreshTokenCount(user);
+            if (oldRefreshToken.Expires < DateTime.UtcNow)
+                return TypedResults.Unauthorized();
+            
             var accessToken = securityService.GenerateAccessToken(user);
             var refreshToken = securityService.GenerateRefreshToken(user);
             
+            user.RefreshTokens.Remove(oldRefreshToken);
             user.RefreshTokens.Add(refreshToken);
+
             dbContext.Users.Update(user);
             await dbContext.SaveChangesAsync(cancellationToken);
             
@@ -79,4 +79,3 @@ public class Login : ICarterModule
         }
     }
 }
-
