@@ -13,7 +13,7 @@ using Server.Security.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<ISecurityService, SecurityService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -34,7 +34,7 @@ builder.Services.AddMediatR(config =>
 builder.Services.AddCarter();
 
 /*** Configure Identity ***/
-builder.Services.AddIdentity<CustomIdentityUser, IdentityRole>(options =>
+builder.Services.AddIdentity<User, IdentityRole>(options =>
     {
         options.User.RequireUniqueEmail = true;
         options.Password.RequireDigit = true;

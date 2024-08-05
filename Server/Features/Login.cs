@@ -3,7 +3,9 @@ using Carter.ModelBinding;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Server.Contracts;
+using Server.Data;
 using Server.Domain.Entities;
 using Server.Security.Interfaces;
 
@@ -44,8 +46,9 @@ public class Login : ICarterModule
     
     internal sealed class Handler(
         IValidator<Command> validator,
-        UserManager<CustomIdentityUser> userManager,
-        ITokenService tokenService
+        UserManager<User> userManager,
+        ISecurityService securityService,
+        AppDbContext dbContext
     ) : IRequestHandler<Command, IResult>
     {
         public async Task<IResult> Handle(Command request, CancellationToken cancellationToken)
@@ -53,18 +56,26 @@ public class Login : ICarterModule
             var validationResult = await validator.ValidateAsync(request, cancellationToken);
             if (!validationResult.IsValid)
                 return Results.UnprocessableEntity(validationResult.GetValidationProblems());
-                
-                
-            var user = await userManager.FindByEmailAsync(request.Email);
 
+            var user = await dbContext
+                .Users
+                .Include(u => u.RefreshTokens)
+                .Where(u => u.NormalizedEmail == request.Email.Trim().ToUpper())
+                .FirstOrDefaultAsync(cancellationToken);
+            
             if (user is null || !await userManager.CheckPasswordAsync(user, request.Password))
                 return Results.BadRequest("login or password is incorrect");
             
-            var accessToken = tokenService.GenerateAccessToken(user);
+            securityService.UpdateRefreshTokenCount(user);
+            var accessToken = securityService.GenerateAccessToken(user);
+            var refreshToken = securityService.GenerateRefreshToken(user);
             
-            // todo refresh token logic
+            user.RefreshTokens.Add(refreshToken);
+            dbContext.Users.Update(user);
+            await dbContext.SaveChangesAsync(cancellationToken);
             
-            return Results.Ok(new LoginResponse(accessToken, "TODO", DateTime.Today));
+            return Results.Ok(
+                new LoginResponse(accessToken, refreshToken.Token, refreshToken.Expires));
         }
     }
 }

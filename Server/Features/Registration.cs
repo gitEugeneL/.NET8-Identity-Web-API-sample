@@ -83,7 +83,7 @@ public class Registration : ICarterModule
     
     internal sealed class Handler(
         IValidator<Commnad> validator,
-        UserManager<CustomIdentityUser> userManager
+        UserManager<User> userManager
     ) : IRequestHandler<Commnad, IResult>
     {
         public async Task<IResult> Handle(Commnad commnad, CancellationToken cancellationToken)
@@ -92,13 +92,14 @@ public class Registration : ICarterModule
             if (!validationResult.IsValid)
                 return Results.UnprocessableEntity(validationResult.GetValidationProblems());
             
-            var user = new CustomIdentityUser
+            var user = new User
             {
                 UserName = commnad.Username,
                 Email = commnad.Email,
                 FirstName = commnad.FirstName,
                 LastName = commnad.LastName,
-                Age = commnad.Age
+                Age = commnad.Age,
+                CreatedAt = DateTime.UtcNow
             };
         
             var createResult = await userManager.CreateAsync(user, commnad.Password);

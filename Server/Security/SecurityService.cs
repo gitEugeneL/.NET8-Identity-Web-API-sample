@@ -1,14 +1,15 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using Microsoft.IdentityModel.Tokens;
 using Server.Domain.Entities;
 using Server.Security.Interfaces;
 
 namespace Server.Security;
 
-public class TokenService(IConfiguration configuration) : ITokenService
+public class SecurityService(IConfiguration configuration) : ISecurityService
 {
-    public string GenerateAccessToken(CustomIdentityUser user)
+    public string GenerateAccessToken(User user)
     {
         var claims = new List<Claim>
         {
@@ -33,6 +34,32 @@ public class TokenService(IConfiguration configuration) : ITokenService
         var token = handler.CreateToken(descriptor);
 
         return handler.WriteToken(token);
+    }
+    
+    public RefreshToken GenerateRefreshToken(User user)
+    {
+        return new RefreshToken
+        {
+            Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(256)),
+            Expires = DateTime.UtcNow.AddDays(
+                int.Parse(configuration.GetSection("Authentication:RefreshTokenLifetimeDays").Value!)),
+            User = user
+        };
+    }
+
+    public void UpdateRefreshTokenCount(User user)
+    {
+        var maxCount = int.Parse(configuration.GetSection("Authentication:RefreshTokenMaxCount").Value!);
+
+        if (user.RefreshTokens.Count < maxCount) 
+            return;
+        
+        var lastRefreshToken = user
+            .RefreshTokens
+            .OrderBy(rt => rt.Expires)
+            .First();
+        
+        user.RefreshTokens.Remove(lastRefreshToken);
     }
 }
   
