@@ -10,18 +10,19 @@ using Microsoft.OpenApi.Models;
 using Server.Data;
 using Server.Domain.Entities;
 using Server.Helpers;
-using Server.Security;
-using Server.Security.Interfaces;
+using Server.Services;
+using Server.Services.Interfaces;
 using Swashbuckle.AspNetCore.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddScoped<ISecurityService, SecurityService>();
+builder.Services.AddTransient<IMailService, MailService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-/*** FluentValidation files register ***/
+/*** FluentValidation configuration**/
 builder.Services
     .AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
@@ -45,8 +46,6 @@ builder.Services.AddIdentity<User, Role>(options =>
         options.Password.RequireLowercase = true;
         options.Password.RequireNonAlphanumeric = true;
         options.Password.RequiredLength = 8;
-        
-        
     })
     .AddEntityFrameworkStores<AppDbContext>();
 
