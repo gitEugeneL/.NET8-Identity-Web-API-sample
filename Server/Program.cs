@@ -4,6 +4,7 @@ using System.Text;
 using Carter;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -47,7 +48,12 @@ builder.Services.AddIdentity<User, Role>(options =>
         options.Password.RequireNonAlphanumeric = true;
         options.Password.RequiredLength = 8;
     })
-    .AddEntityFrameworkStores<AppDbContext>();
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddDefaultTokenProviders();
+
+/*** Reset password token configuration ***/
+builder.Services.Configure<DataProtectionTokenProviderOptions>(option =>
+    option.TokenLifespan = TimeSpan.FromHours(1));
 
 /*** Authentication configuration ***/
 var configuration = builder.Configuration.GetSection("Authentication");
