@@ -70,7 +70,7 @@ public class ResetPassword : ICarterModule
                 return Results.UnprocessableEntity(validationResult.GetValidationProblems());
 
             var user = await userManager.FindByEmailAsync(command.Email);
-            if (user is null)
+            if (user is null || !await userManager.IsEmailConfirmedAsync(user))
                 return Results.BadRequest();
 
             var resetResult = await userManager.ResetPasswordAsync(user, command.ResetToken, command.NewPassword);

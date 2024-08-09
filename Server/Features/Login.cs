@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Server.Contracts;
 using Server.Data;
 using Server.Domain.Entities;
-using Server.Security.Interfaces;
+using Server.Services.Interfaces;
 
 namespace Server.Features;
 
@@ -35,15 +35,15 @@ public class Login : ICarterModule
     {
         public Validator()
         {
-            RuleFor(request => request.Email)
+            RuleFor(command => command.Email)
                 .NotEmpty()
                 .EmailAddress();
 
-            RuleFor(request => request.Password)
+            RuleFor(command => command.Password)
                 .NotEmpty();
         }
     }
-    
+
     internal sealed class Handler(
         IValidator<Command> validator,
         UserManager<User> userManager,
@@ -62,9 +62,12 @@ public class Login : ICarterModule
                 .Include(u => u.RefreshTokens)
                 .Where(u => u.NormalizedEmail == command.Email.Trim().ToUpper())
                 .SingleOrDefaultAsync(cancellationToken);
-            
-            if (user is null || !await userManager.CheckPasswordAsync(user, command.Password))
+
+            if (user is null || !await userManager.CheckPasswordAsync(user, command.Password) )
                 return Results.BadRequest("login or password is incorrect");
+            
+            if (!await userManager.IsEmailConfirmedAsync(user))
+                return Results.BadRequest("Email isn't confirmed");
             
             var userRoles = await userManager.GetRolesAsync(user);
             

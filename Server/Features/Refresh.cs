@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Server.Contracts;
 using Server.Data;
 using Server.Domain.Entities;
-using Server.Security.Interfaces;
+using Server.Services.Interfaces;
 
 namespace Server.Features;
 
@@ -15,7 +15,7 @@ public class Refresh : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
-        app.MapPost("/pi/auth/refresh", async (RefreshRequest request, ISender sender) =>
+        app.MapPost("/api/auth/refresh", async (RefreshRequest request, ISender sender) =>
             {
                 var command = new Command(request.RefreshToken);
                 return await sender.Send(command);
@@ -34,7 +34,7 @@ public class Refresh : ICarterModule
     {
         public Validator()
         {
-            RuleFor(request => request.RefreshToken)
+            RuleFor(command => command.RefreshToken)
                 .NotEmpty();
         }
     }
@@ -59,15 +59,15 @@ public class Refresh : ICarterModule
                     .Any(rt => rt.Token == command.RefreshToken))
                 .FirstOrDefaultAsync(cancellationToken);
 
-            if (user is null || user.RefreshTokens.Count == 0)
+            if (user is null || user.RefreshTokens.Count == 0 || !await userManager.IsEmailConfirmedAsync(user))
                 return Results.Unauthorized();
             
             var oldRefreshToken = user
                 .RefreshTokens
                 .First(rt => rt.Token == command.RefreshToken);
-            
-            if (oldRefreshToken.Expires < DateTime.UtcNow)
-                return TypedResults.Unauthorized();
+
+            if (!securityService.ValidateRefreshToken(oldRefreshToken))
+                return Results.Unauthorized();
             
             var userRoles = await userManager.GetRolesAsync(user);
             

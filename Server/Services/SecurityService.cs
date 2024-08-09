@@ -3,9 +3,9 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using Microsoft.IdentityModel.Tokens;
 using Server.Domain.Entities;
-using Server.Security.Interfaces;
+using Server.Services.Interfaces;
 
-namespace Server.Security;
+namespace Server.Services;
 
 public class SecurityService(IConfiguration configuration) : ISecurityService
 {
@@ -65,5 +65,8 @@ public class SecurityService(IConfiguration configuration) : ISecurityService
         
         user.RefreshTokens.Remove(lastRefreshToken);
     }
+    
+    public bool ValidateRefreshToken(RefreshToken refreshToken) => 
+        refreshToken.Expires >= DateTime.UtcNow;
 }
   

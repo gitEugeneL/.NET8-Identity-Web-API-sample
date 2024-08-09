@@ -34,7 +34,7 @@ public class Logout : ICarterModule
     {
         public Validator()
         {
-            RuleFor(request => request.RefreshToken)
+            RuleFor(command => command.RefreshToken)
                 .NotEmpty();
         }
     }

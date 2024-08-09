@@ -55,13 +55,13 @@ public class ForgotPassword : ICarterModule
                 return Results.UnprocessableEntity(validationResult.GetValidationProblems());
             
             var user = await userManager.FindByEmailAsync(command.Email);
-            if (user is null)
+            if (user is null || ! await userManager.IsEmailConfirmedAsync(user))
                 return Results.BadRequest();
             
             var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
             var param = new Dictionary<string, string>
             {
-                { "token", resetToken },
+                { "resetToken", resetToken },
                 { "email", command.Email }
             };
             var callback = QueryHelpers.AddQueryString(command.ClientUri, param); 
