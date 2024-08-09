@@ -8,6 +8,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Quartz;
+using Quartz.AspNetCore;
+using Server.BackgroundJobs;
 using Server.Data;
 using Server.Domain.Entities;
 using Server.Helpers;
@@ -56,7 +59,7 @@ builder.Services.Configure<DataProtectionTokenProviderOptions>(option =>
     option.TokenLifespan = TimeSpan.FromHours(1));
 
 /*** Authentication configuration ***/
-var configuration = builder.Configuration.GetSection("Authentication");
+var authConfiguration = builder.Configuration.GetSection("Authentication");
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -70,10 +73,10 @@ builder.Services.AddAuthentication(options =>
             ValidateIssuer = true,
             ValidateIssuerSigningKey = true,
             ValidateLifetime = true,
-            ValidAudience = configuration.GetSection("Audience").Value,
-            ValidIssuer = configuration.GetSection("Issuer").Value,
+            ValidAudience = authConfiguration.GetSection("Audience").Value,
+            ValidIssuer = authConfiguration.GetSection("Issuer").Value,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8
-                .GetBytes(configuration.GetSection("AccessTokenSecurityKey").Value!))
+                .GetBytes(authConfiguration.GetSection("AccessTokenSecurityKey").Value!))
         };
     });
 
@@ -92,6 +95,25 @@ builder.Services.AddAuthorizationBuilder()
             .RequireClaim(ClaimTypes.Role)
             .RequireRole(AppConstants.AdminRole)
     );
+
+/*** Background tasks configuration ***/
+var backJobsConfiguration = builder.Configuration.GetSection("BackgroundJobs");
+builder.Services.AddQuartz(options =>
+{
+    var jobKey = new JobKey(nameof(RefreshTokensCleanerBackgroundJob));
+    options.AddJob<RefreshTokensCleanerBackgroundJob>(opts => opts.WithIdentity(jobKey));
+
+    options.AddTrigger(opts => opts
+        .ForJob(jobKey)
+        .WithSchedule(CronScheduleBuilder.DailyAtHourAndMinute(
+            int.Parse(backJobsConfiguration.GetSection("ExpiredRefreshTokenCleaningTimeHour24").Value!),
+            int.Parse(backJobsConfiguration.GetSection("ExpiredRefreshTokenCleaningTimeMinute60").Value!))
+        )
+    );
+});
+
+builder.Services.AddQuartzServer(options =>
+    options.WaitForJobsToComplete = true);
 
 /*** Swagger configuration ***/
 builder.Services.AddSwaggerGen(c =>
