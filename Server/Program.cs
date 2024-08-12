@@ -44,7 +44,12 @@ builder.Services.AddCarter();
 /*** Configure Identity ***/
 builder.Services.AddIdentity<User, Role>(options =>
     {
+        options.Lockout.AllowedForNewUsers = true;
+        options.Lockout.MaxFailedAccessAttempts = 10;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+        
         options.User.RequireUniqueEmail = true;
+        
         options.Password.RequireDigit = true;
         options.Password.RequireUppercase = true;
         options.Password.RequireLowercase = true;

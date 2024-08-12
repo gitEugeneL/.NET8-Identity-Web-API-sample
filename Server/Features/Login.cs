@@ -62,12 +62,19 @@ public class Login : ICarterModule
                 .Include(u => u.RefreshTokens)
                 .Where(u => u.NormalizedEmail == command.Email.Trim().ToUpper())
                 .SingleOrDefaultAsync(cancellationToken);
-
-            if (user is null || !await userManager.CheckPasswordAsync(user, command.Password) )
-                return Results.BadRequest("login or password is incorrect");
             
+            if (user is null || await userManager.IsLockedOutAsync(user))
+                return Results.BadRequest("Your account doesn't exist or your password is locked");
+            
+            if (!await userManager.CheckPasswordAsync(user, command.Password))
+            {
+                await userManager.AccessFailedAsync(user); // set password lockout
+                return Results.BadRequest("Your login or password is incorrect");
+            }
+            await userManager.ResetAccessFailedCountAsync(user); // reset password lockout
+
             if (!await userManager.IsEmailConfirmedAsync(user))
-                return Results.BadRequest("Email isn't confirmed");
+                return Results.BadRequest("Your email isn't confirmed");
             
             var userRoles = await userManager.GetRolesAsync(user);
             

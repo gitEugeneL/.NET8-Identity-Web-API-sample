@@ -58,16 +58,22 @@ public class Refresh : ICarterModule
                 .Where(u => u.RefreshTokens
                     .Any(rt => rt.Token == command.RefreshToken))
                 .FirstOrDefaultAsync(cancellationToken);
-
-            if (user is null || user.RefreshTokens.Count == 0 || !await userManager.IsEmailConfirmedAsync(user))
+            
+            if (user is null)
                 return Results.Unauthorized();
+
+            if (await userManager.IsLockedOutAsync(user))
+            {
+                await userManager.AccessFailedAsync(user);
+                return Results.BadRequest("Your account doesn't exist or your password is locked");
+            }
             
             var oldRefreshToken = user
                 .RefreshTokens
                 .First(rt => rt.Token == command.RefreshToken);
-
+            
             if (!securityService.ValidateRefreshToken(oldRefreshToken))
-                return Results.Unauthorized();
+                return Results.BadRequest("Invalid refresh token");
             
             var userRoles = await userManager.GetRolesAsync(user);
             

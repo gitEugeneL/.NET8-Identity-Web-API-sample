@@ -75,6 +75,8 @@ public class ResetPassword : ICarterModule
 
             var resetResult = await userManager.ResetPasswordAsync(user, command.ResetToken, command.NewPassword);
 
+            await userManager.SetLockoutEndDateAsync(user, null); // reset lockout and date
+            
             if (resetResult.Succeeded) 
                 return Results.Ok();
             
