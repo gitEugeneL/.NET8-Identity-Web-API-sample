@@ -9,7 +9,7 @@ using Server.Domain.Entities;
 using Server.Helpers;
 using Server.Services.Interfaces;
 
-namespace Server.Features;
+namespace Server.Features.Auth;
 
 public class Registration : ICarterModule
 { 
@@ -20,7 +20,7 @@ public class Registration : ICarterModule
                 var command = new Command(
                     Email: request.Email,
                     Password: request.Password,
-                    ConfirmPassword: request.Password,
+                    ConfirmPassword: request.ConfirmPassword,
                     Username: request.Username,
                     ClientUri: request.ClientUri,
                     FirstName: request.FirstName,

@@ -8,7 +8,7 @@ public sealed record RegistrationRequest(
     string ConfirmPassword,
     string Username,
     string ClientUri,
-    string? FirstName,
-    string? LastName,
-    int? Age
+    string? FirstName = null,
+    string? LastName = null,
+    int? Age = null
 );

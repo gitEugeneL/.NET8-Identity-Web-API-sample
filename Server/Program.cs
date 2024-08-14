@@ -139,6 +139,12 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    
+    /*** Refresh database for dev and tests ***/
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetService<AppDbContext>()!;
+    context.Database.EnsureDeleted();
+    context.Database.EnsureCreated();
 }
 
 app.MapCarter();
@@ -146,3 +152,5 @@ app.MapCarter();
 app.UseHttpsRedirection();
 
 app.Run();
+
+public abstract partial class Program { } // config for tests
