@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Server.Domain.Entities;
-using Server.Helpers;
 
 namespace Server.Data;
 
@@ -25,15 +24,15 @@ public class AppDbContext(DbContextOptions options) : IdentityDbContext<User, Ro
                 new Role
                 {
                     Id = Guid.NewGuid().ToString(),
-                    Name = AppConstants.AdminRole,
-                    NormalizedName = AppConstants.AdminRole.ToUpper(),
+                    Name = Helpers.Roles.Admin,
+                    NormalizedName = Helpers.Roles.Admin.ToUpper(),
                     Description = "The admin role"
                 },
                 new Role
                 {
                     Id = Guid.NewGuid().ToString(),
-                    Name = AppConstants.UserRole,
-                    NormalizedName = AppConstants.UserRole.ToUpper(),
+                    Name = Helpers.Roles.User,
+                    NormalizedName = Helpers.Roles.User.ToUpper(),
                     Description = "The user role"
                 }
             );

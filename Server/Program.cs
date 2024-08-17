@@ -87,18 +87,18 @@ builder.Services.AddAuthentication(options =>
 
 /*** Authentication roles policies ***/
 builder.Services.AddAuthorizationBuilder()
-    .AddPolicy(AppConstants.UserRole, policy =>
+    .AddPolicy(Roles.User, policy =>
         policy
             .RequireClaim(ClaimTypes.Email)
             .RequireClaim(ClaimTypes.NameIdentifier)
             .RequireClaim(ClaimTypes.Role)
-            .RequireRole(AppConstants.UserRole))
-    .AddPolicy(AppConstants.AdminRole, policy =>
+            .RequireRole(Roles.User))
+    .AddPolicy(Roles.Admin, policy =>
         policy
             .RequireClaim(ClaimTypes.Email)
             .RequireClaim(ClaimTypes.NameIdentifier)
             .RequireClaim(ClaimTypes.Role)
-            .RequireRole(AppConstants.AdminRole)
+            .RequireRole(Roles.Admin)
     );
 
 /*** Background tasks configuration ***/
