@@ -1,5 +1,3 @@
-using MediatR;
-
 namespace Server.Contracts;
 
 public sealed record RegistrationRequest(

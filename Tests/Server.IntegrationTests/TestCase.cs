@@ -6,11 +6,23 @@ using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Server.Contracts;
 using Server.Data;
+using Server.Helpers;
+using Server.Services.Interfaces;
 
 namespace Server.IntegrationTests;
 
 public static class TestCase
 {
+    public static string? TokenFromEmail = null;
+    
+    public static RegistrationRequest UserModel = new(
+        Email: "test@user.com", 
+        Password: "strongPwd!1@", 
+        ConfirmPassword: "strongPwd!1@",
+        Username: "testUser",
+        ClientUri: Paths.Registration
+    );
+    
     public static HttpClient CreateTestHttpClient(WebApplicationFactory<Program> factory, string dbname)
     {
         return factory
@@ -23,6 +35,8 @@ public static class TestCase
 
                     services.AddDbContext<AppDbContext>(options =>
                         options.UseInMemoryDatabase(dbname));
+                    
+                    services.AddTransient<IMailService, FakeMailService>();
                 });
             })
             .CreateClient();
