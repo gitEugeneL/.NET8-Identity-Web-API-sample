@@ -116,8 +116,7 @@ builder.Services.AddQuartz(options =>
         )
     );
 });
-
-builder.Services.AddQuartzServer(options =>
+builder.Services.AddQuartzHostedService(options =>
     options.WaitForJobsToComplete = true);
 
 /*** Swagger configuration ***/

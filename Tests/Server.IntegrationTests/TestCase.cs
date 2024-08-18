@@ -3,7 +3,9 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
+using Quartz;
 using Server.Contracts;
 using Server.Data;
 using Server.Helpers;
@@ -13,16 +15,6 @@ namespace Server.IntegrationTests;
 
 public static class TestCase
 {
-    public static string? TokenFromEmail = null;
-    
-    public static RegistrationRequest UserModel = new(
-        Email: "test@user.com", 
-        Password: "strongPwd!1@", 
-        ConfirmPassword: "strongPwd!1@",
-        Username: "testUser",
-        ClientUri: Paths.Registration
-    );
-    
     public static HttpClient CreateTestHttpClient(WebApplicationFactory<Program> factory, string dbname)
     {
         return factory
@@ -30,22 +22,41 @@ public static class TestCase
             {
                 builder.ConfigureServices(services =>
                 {
+           
+                    // remove DB service
                     services.Remove(services.SingleOrDefault(service =>
                         service.ServiceType == typeof(DbContextOptions<AppDbContext>))!);
-
+                    
+                    // add inMemory db
                     services.AddDbContext<AppDbContext>(options =>
                         options.UseInMemoryDatabase(dbname));
                     
+                    // remove Quartz service
+                    services.Remove(services.SingleOrDefault(service =>
+                        service.ServiceType == typeof(IHostedService) && 
+                        service.ImplementationType == typeof(QuartzHostedService))!);
+                    
+                    // add fake mail service
                     services.AddTransient<IMailService, FakeMailService>();
                 });
             })
             .CreateClient();
     }
     
+    public static string? TokenFromEmail = null;
+    
+    public static readonly RegistrationRequest BaseUserModel = new(
+        Email: "test@user.com", 
+        Password: "strongPwd!1@", 
+        ConfirmPassword: "strongPwd!1@",
+        Username: "testUser",
+        ClientUri: Paths.Registration
+    );
+    
     public static async Task<LoginResponse> Login(HttpClient client, string email, string password)
     {
         var model = new LoginRequest(email, password);
-        var response = await client.PostAsJsonAsync("api/v1/auth/login", model);
+        var response = await client.PostAsJsonAsync(Paths.Login, model);
 
         var loginResponse = await DeserializeResponse<LoginResponse>(response);
         
