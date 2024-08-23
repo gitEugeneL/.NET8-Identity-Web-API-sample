@@ -13,6 +13,7 @@ namespace Server.Features.Auth.Registration;
 internal sealed class RegistrationHandler(
     IValidator<RegistrationCommand> validator,
     UserManager<User> userManager,
+    ISecurityService securityService,
     IMailService mailService) : IRequestHandler<RegistrationCommand, Result<RegistrationResult>>
 {
     public async Task<Result<RegistrationResult>> Handle(RegistrationCommand command, CancellationToken ct)
@@ -42,16 +43,9 @@ internal sealed class RegistrationHandler(
         }
         
         await userManager.AddToRoleAsync(user, Roles.User);
-            
-        var confirmationToken = await userManager.GenerateEmailConfirmationTokenAsync(user);
-        var param = new Dictionary<string, string>
-        {
-            { "confirmationToken", confirmationToken },
-            { "email", user.Email }
-        };
-        var callback = QueryHelpers.AddQueryString(command.ClientUri, param);
-            
-        await mailService.SendMailAsync(user.Email, "Email Confirmation token", callback);
+
+        var confirmationToken = await securityService.GenerateEmailConfirmationToken(user, command.ClientUri);
+        await mailService.SendMailAsync(user.Email, "Email Confirmation token", confirmationToken);
 
         return Result<RegistrationResult>.Success(
             new RegistrationResult(user.Id));

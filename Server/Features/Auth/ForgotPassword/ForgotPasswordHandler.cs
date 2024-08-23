@@ -2,7 +2,6 @@ using Carter.ModelBinding;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.WebUtilities;
 using Server.Domain.Entities;
 using Server.Services.Interfaces;
 using Server.Utils.CustomResult;
@@ -12,6 +11,7 @@ namespace Server.Features.Auth.ForgotPassword;
 internal sealed class ForgotPasswordHandler(
     IValidator<ForgotPasswordCommand> validator,
     UserManager<User> userManager,
+    ISecurityService securityService,
     IMailService mailService) : IRequestHandler<ForgotPasswordCommand, Result<ForgotPasswordResult>>
 {
     public async Task<Result<ForgotPasswordResult>> Handle(ForgotPasswordCommand command, CancellationToken ct)
@@ -30,15 +30,9 @@ internal sealed class ForgotPasswordHandler(
                 new Errors.Authentication("Authentication problem"));
         }
         
-        var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
-        var param = new Dictionary<string, string>
-        {
-            { "resetToken", resetToken },
-            { "email", command.Email }
-        };
-        var callback = QueryHelpers.AddQueryString(command.ClientUri, param);
+        var resetToken = await securityService.GeneratePasswordResetToken(user, command.ClientUri);
 
-        await mailService.SendMailAsync(user.Email, "Reset password token", callback);
+        await mailService.SendMailAsync(user.Email!, "Reset password token", resetToken);
 
         return Result<ForgotPasswordResult>.Success(new ForgotPasswordResult(user.Id));
     }
