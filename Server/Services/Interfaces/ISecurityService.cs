@@ -8,4 +8,6 @@ public interface ISecurityService
     RefreshToken GenerateRefreshToken(User user);
     void UpdateRefreshTokenCount(User user);
     bool ValidateRefreshToken(RefreshToken refreshToken);
+    Task<string> GenerateEmailConfirmationToken(User user, string clientUri);
+    Task<string> GeneratePasswordResetToken(User user, string clientUri);
 }

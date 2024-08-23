@@ -9,6 +9,7 @@ using Quartz;
 using Server.Contracts;
 using Server.Data;
 using Server.Helpers;
+using Server.IntegrationTests.FakeServices;
 using Server.Services.Interfaces;
 
 namespace Server.IntegrationTests;
@@ -17,12 +18,10 @@ public static class TestCase
 {
     public static HttpClient CreateTestHttpClient(WebApplicationFactory<Program> factory, string dbname)
     {
-        return factory
-            .WithWebHostBuilder(builder => 
+        return factory.WithWebHostBuilder(builder => 
             {
                 builder.ConfigureServices(services =>
                 {
-           
                     // remove DB service
                     services.Remove(services.SingleOrDefault(service =>
                         service.ServiceType == typeof(DbContextOptions<AppDbContext>))!);
@@ -38,26 +37,19 @@ public static class TestCase
                     
                     // add fake mail service
                     services.AddTransient<IMailService, FakeMailService>();
+                    
+                    // add fake emailConfirmation service
+                    services.AddTransient<IConfirmationService, FakeConfirmationService>();
                 });
             })
             .CreateClient();
     }
     
-    public static string? TokenFromEmail = null;
-    
-    public static readonly RegistrationRequest BaseUserModel = new(
-        Email: "test@user.com", 
-        Password: "strongPwd!1@", 
-        ConfirmPassword: "strongPwd!1@",
-        Username: "testUser",
-        ClientUri: Paths.Registration
-    );
-    
     public static async Task<LoginResponse> Login(HttpClient client, string email, string password)
     {
         var model = new LoginRequest(email, password);
         var response = await client.PostAsJsonAsync(Paths.Login, model);
-
+    
         var loginResponse = await DeserializeResponse<LoginResponse>(response);
         
         IncludeTokenInRequest(client, loginResponse.AccessToken);

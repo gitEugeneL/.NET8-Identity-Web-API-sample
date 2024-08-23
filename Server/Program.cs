@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Quartz;
-using Quartz.AspNetCore;
 using Server.BackgroundJobs;
 using Server.Data;
 using Server.Domain.Entities;
@@ -21,6 +20,7 @@ using Swashbuckle.AspNetCore.Filters;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddScoped<ISecurityService, SecurityService>();
+builder.Services.AddTransient<IConfirmationService, ConfirmationService>();
 builder.Services.AddTransient<IMailService, MailService>();
 
 builder.Services.AddEndpointsApiExplorer();
