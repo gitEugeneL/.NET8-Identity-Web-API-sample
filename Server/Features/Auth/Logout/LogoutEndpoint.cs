@@ -23,7 +23,7 @@ public class LogoutEndpoint : ICarterModule
                         _ => Results.Forbid()
                     };
                 
-                return Results.Ok(result.Value);
+                return Results.NoContent();
             })
             .RequireAuthorization(Roles.User)
             
