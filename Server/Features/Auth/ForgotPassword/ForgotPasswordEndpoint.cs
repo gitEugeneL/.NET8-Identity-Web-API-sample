@@ -1,8 +1,8 @@
 using Carter;
 using MediatR;
+using Server.Contracts;
 using Server.Helpers;
 using Server.Utils.CustomResult;
-using ForgotPasswordRequest = Server.Contracts.ForgotPasswordRequest;
 
 namespace Server.Features.Auth.ForgotPassword;
 

@@ -3,12 +3,14 @@ using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Server.Domain.Entities;
+using Server.Services.Interfaces;
 using Server.Utils.CustomResult;
 
 namespace Server.Features.Auth.ResetPassword;
 
 internal sealed class ResetPasswordHandler(
     IValidator<ResetPasswordCommand> validator,
+    IConfirmationService confirmationService,
     UserManager<User> userManager) : IRequestHandler<ResetPasswordCommand, Result<ResetPasswordResult>>
 {
     public async Task<Result<ResetPasswordResult>> Handle(ResetPasswordCommand command, CancellationToken ct)
@@ -26,8 +28,8 @@ internal sealed class ResetPasswordHandler(
                 new Errors.Authentication("Authentication problem"));
         }
         
-        var resetResult = await userManager.ResetPasswordAsync(user, command.ResetToken, command.NewPassword);
-
+        var resetResult = await confirmationService.ResetPassword(user, command.ResetToken, command.NewPassword);
+        
         await userManager.SetLockoutEndDateAsync(user, null); // reset lockout and date
 
         if (resetResult.Succeeded)

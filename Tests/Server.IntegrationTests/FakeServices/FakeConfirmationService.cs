@@ -14,4 +14,11 @@ public class FakeConfirmationService(AppDbContext dbContext) : IConfirmationServ
         await dbContext.SaveChangesAsync();
         return IdentityResult.Success;
     }
+
+    public Task<IdentityResult> ResetPassword(User user, string resetToken, string newPassword)
+    {
+        var passwordHasher = new PasswordHasher<User>();
+        user.PasswordHash = passwordHasher.HashPassword(user, newPassword);
+        return Task.FromResult(IdentityResult.Success);
+    }
 }
